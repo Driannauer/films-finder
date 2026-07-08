@@ -1,9 +1,9 @@
 ---
-name: cinema-manager
+name: films-finder
 description: Personal media library management — discover content, save to Quark cloud drive, auto-organize for Infuse/Plex. Plugin system for content sources. Use when user wants to find/watch movies, save to cloud drive, or manage media library.
 ---
 
-# Cinema Manager
+# films-finder
 
 Media discovery → Cloud save → Library organization.
 
@@ -20,7 +20,7 @@ python3 scripts/cinema.py plugins           # list plugins
 
 ## Hermes Terminal Calls
 
-When using the Hermes `terminal` tool for this skill, emit a real tool call. Do not print `[调用 terminal] {...}` or `[Tool call: terminal] {...}` as chat text. The user has explicitly complained about pseudo tool-call text; for QQ cinema-manager requests, a chat message that contains the tool-call JSON instead of a real tool call is a failure.
+When using the Hermes `terminal` tool for this skill, emit a real tool call. Do not print `[调用 terminal] {...}` or `[Tool call: terminal] {...}` as chat text. The user has explicitly complained about pseudo tool-call text; for QQ films-finder requests, a chat message that contains the tool-call JSON instead of a real tool call is a failure.
 
 Use `workdir` for the per-command working directory. Do not use `cwd`; do not prepend `cd ... &&` unless `workdir` is unavailable. After a tool result, report only the useful outcome/table/error; do not narrate intended future calls when the next real tool call can be made now.
 
@@ -29,7 +29,7 @@ Search tool arguments:
 ```json
 {
   "command": ".venv/bin/python scripts/cinema.py search 电影名",
-  "workdir": "/root/.hermes/skills/cinema-manager",
+  "workdir": "/root/.hermes/skills/films-finder",
   "timeout": 60,
   "background": false,
   "pty": false
@@ -41,7 +41,7 @@ Save the user's selected result number from the latest search:
 ```json
 {
   "command": ".venv/bin/python scripts/cinema.py save --index 1",
-  "workdir": "/root/.hermes/skills/cinema-manager",
+  "workdir": "/root/.hermes/skills/films-finder",
   "timeout": 60,
   "background": false,
   "pty": false
@@ -50,7 +50,7 @@ Save the user's selected result number from the latest search:
 
 `search` prints a Markdown table with `序号`, `内容`, `大小`, and `得分`, and caches the full latest result list. `save --index N` reads that cached list. Use it immediately after the matching search; if the cache may be stale, run `search 电影名` again first or pass the title after the index.
 
-If Quark login is missing or expired, `save` returns `auth_required` and prints a `MEDIA:/root/.hermes/cache/cinema-manager/quark-login/...png` QR image path. Include that exact bare `MEDIA:` line in the final chat reply so the gateway sends the QR image, and ask the user to scan it with the Quark App and reply "已扫码".
+If Quark login is missing or expired, `save` returns `auth_required` and prints a `MEDIA:/root/.hermes/cache/films-finder/quark-login/...png` QR image path. Include that exact bare `MEDIA:` line in the final chat reply so the gateway sends the QR image, and ask the user to scan it with the Quark App and reply "已扫码".
 
 **Timing note**: The QR has a 300-second lifetime from generation. If the user takes 30+ seconds to open the Quark App and scan, the remaining time plus the 60-second confirm loop may cause the login to timeout. If `confirm` times out, generate a fresh QR with `login --qr` immediately and ask the user to scan and reply again.
 
@@ -59,7 +59,7 @@ When the user replies that they scanned the Quark QR code (for example "已扫�
 ```json
 {
   "command": ".venv/bin/python scripts/cinema.py login --confirm --timeout 60",
-  "workdir": "/root/.hermes/skills/cinema-manager",
+  "workdir": "/root/.hermes/skills/films-finder",
   "timeout": 90,
   "background": false,
   "pty": false
@@ -94,7 +94,7 @@ Organizes files into Infuse/Plex-compatible structure:
 ## Workflow
 
 1. User says "I want to watch X"
-2. Run search only: `.venv/bin/python scripts/cinema.py search X` through the real terminal tool with `workdir=/root/.hermes/skills/cinema-manager` and `timeout=60`
+2. Run search only: `.venv/bin/python scripts/cinema.py search X` through the real terminal tool with `workdir=/root/.hermes/skills/films-finder` and `timeout=60`
 3. Search output is a numbered table (`序号`, `内容`, `大小`, `得分`) and caches the full latest result list
 4. If the user picks a result number, run `.venv/bin/python scripts/cinema.py save --index N` through the real terminal tool; do not pass `N` as a share URL
 5. Do not run `save` or `auto` in the same turn as a plain "I want to watch X" request unless the user explicitly asked for auto-save/best-pick
@@ -132,7 +132,7 @@ When saving a popular movie like 007 or 哪吒, it's common for the top-ranked 4
 ### Cookie stored in two places — ensure both are in sync
 
 The `login --confirm` command writes the cookie to both:
-- `~/.cinema-manager/quark_cookies.json` (via `quark.py`'s `_save_cookie_cache`)
+- `~/.films-finder/quark_cookies.json` (via `quark.py`'s `_save_cookie_cache`)
 - `config.json` (via `cinema.py`'s `save_quark_cookie`)
 
-Both files must contain the full, untruncated cookie string for saves to work. If `config.json` ends up with a shorter or malformed cookie while `~/.cinema-manager/quark_cookies.json` has the full one, the `save` command may still use the broken cookie from config.json. Verify the cookie lengths match after login.
+Both files must contain the full, untruncated cookie string for saves to work. If `config.json` ends up with a shorter or malformed cookie while `~/.films-finder/quark_cookies.json` has the full one, the `save` command may still use the broken cookie from config.json. Verify the cookie lengths match after login.

@@ -20,12 +20,12 @@ import httpx
 QUARK_API = "https://drive-pc.quark.cn/1/clouddrive"
 QUARK_SHARE_API = "https://drive.quark.cn/1/clouddrive"
 
-COOKIE_CACHE = os.path.expanduser("~/.cinema-manager/quark_cookies.json")
+COOKIE_CACHE = os.path.expanduser("~/.films-finder/quark_cookies.json")
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 QUARKPAN_CONFIG_DIR = os.path.join(PROJECT_DIR, ".quarkpan")
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", "~/.hermes")).expanduser()
-QUARK_LOGIN_DIR = HERMES_HOME / "cache" / "cinema-manager" / "quark-login"
+QUARK_LOGIN_DIR = HERMES_HOME / "cache" / "films-finder" / "quark-login"
 QUARK_LOGIN_STATE = QUARK_LOGIN_DIR / "state.json"
 DEFAULT_QR_LOGIN_TIMEOUT = 300
 SKIP_DOWNLOAD_EXTENSIONS = {

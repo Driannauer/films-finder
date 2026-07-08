@@ -1,4 +1,4 @@
-# 🎬 cinema-manager — 项目说明
+# 🎬 films-finder — 项目说明
 
 > 最后更新：2026-06-03 | 当前版本：v1.0 | 状态：稳定可用 ✅
 
@@ -7,10 +7,10 @@
 ## 一、总览
 
 ```
-产品：Hermes Agent 影视资源管理 skill
+产品：films-finder / Hermes Agent 影视资源管理 skill
 定位：搜索影视资源 → 夸克网盘转存 → 自动分类整理 → Infuse/Plex/Jellyfin 可用
 模式：开源免费（MIT），Hermes Agent 插件
-GitHub：github.com/249695811/cinema-manager
+GitHub：github.com/Driannauer/films-finder
 ```
 
 ---
@@ -18,7 +18,7 @@ GitHub：github.com/249695811/cinema-manager
 ## 二、目录结构
 
 ```
-cinema-manager/
+films-finder/
 ├── SKILL.md                    # Hermes Agent skill 定义
 ├── README.md                   # 用户文档
 ├── config.example.json         # 配置模板

@@ -34,13 +34,13 @@ from library import LibraryManager
 
 CONFIG_PATHS = [
     SCRIPT_DIR.parent / "config.json",
-    Path.home() / ".cinema-manager" / "config.json",
+    Path.home() / ".films-finder" / "config.json",
 ]
 DEFAULT_LOCAL_DOWNLOAD_DIR = "/root/films"
 DEFAULT_PLUGIN_SEARCH_TIMEOUT = 20
 DEFAULT_QUARK_LOGIN_TIMEOUT = 300
 DEFAULT_QUARK_CONFIRM_TIMEOUT = 60
-SEARCH_CACHE_PATH = Path.home() / ".cinema-manager" / "last_search.json"
+SEARCH_CACHE_PATH = Path.home() / ".films-finder" / "last_search.json"
 MAX_TABLE_TITLE_WIDTH = 120
 SIZE_RE = re.compile(
     r"(?i)(\d+(?:\.\d+)?)\s*(TB|GB|MB|G|M)(?=$|[\s\]\)】）._-]|[^0-9A-Za-z])"

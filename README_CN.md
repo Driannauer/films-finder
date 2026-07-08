@@ -1,6 +1,6 @@
-# 🎬 影视管理 - Hermes 技能
+# films-finder
 
-[Hermes Agent](https://github.com/nousresearch/hermes-agent) 技能，用于个人媒体库管理 — 内容发现、夸克网盘保存、自动分类整理。
+`films-finder` 是一个用于个人媒体库管理的 [Hermes Agent](https://github.com/nousresearch/hermes-agent) 技能，也可以作为普通 Python 命令行工具使用。它支持内容发现、夸克网盘保存和自动分类整理。
 
 ## 功能特性
 
@@ -13,9 +13,9 @@
 ## 快速开始
 
 ```bash
-git clone https://github.com/249695811/cinema-manager.git ~/.hermes/skills/cinema-manager
-pip install -r ~/.hermes/skills/cinema-manager/requirements.txt
-python3 ~/.hermes/skills/cinema-manager/scripts/setup.py
+git clone https://github.com/Driannauer/films-finder.git ~/.hermes/skills/films-finder
+pip install -r ~/.hermes/skills/films-finder/requirements.txt
+python3 ~/.hermes/skills/films-finder/scripts/setup.py
 ```
 
 设置向导会引导你完成：
@@ -67,7 +67,7 @@ python3 scripts/setup.py                             # 重新运行设置向导
 
 ### 夸克认证
 
-Hermes 聊天登录：运行 `python3 scripts/cinema.py login --qr`，命令会在 `~/.hermes/cache/cinema-manager/quark-login/` 下生成二维码图片，并输出可由 Hermes 发送的 `MEDIA:/...png`。用夸克 App 扫码后，运行 `python3 scripts/cinema.py login --confirm` 保存新 Cookie。
+Hermes 聊天登录：运行 `python3 scripts/cinema.py login --qr`，命令会在 `~/.hermes/cache/films-finder/quark-login/` 下生成二维码图片，并输出可由 Hermes 发送的 `MEDIA:/...png`。用夸克 App 扫码后，运行 `python3 scripts/cinema.py login --confirm` 保存新 Cookie。
 
 当 `save` 检测到夸克 Cookie 缺失或过期时，会自动生成新的二维码，并记录刚才待保存的资源。扫码后执行 `login --confirm` 会保存 Cookie 并自动重试刚才的保存。
 
