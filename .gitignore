@@ -1,0 +1,25 @@
+# Local configuration and secrets
+config.json
+.env
+.env.*
+
+# Python caches and build output
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+
+# Runtime artifacts
+scripts/genre_cache.json
+*.log
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
