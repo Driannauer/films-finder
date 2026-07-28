@@ -73,6 +73,7 @@ Pitfall: if `login --confirm` succeeds but the retry still reports `Quark login 
 ## Config
 
 `config.json` (not committed, create from `config.example.json`):
+
 - `quark.cookie` — Quark session cookie (login to pan.quark.cn, copy cookie from browser DevTools)
 - `plugins` — enable/disable content source plugins
 - `save_folder` — Quark folder name (default: "影视资源")
@@ -88,6 +89,7 @@ Pitfall: if `login --confirm` succeeds but the retry still reports `Quark login 
 `cinema.py organize <fid> <title> --type movie|tv`
 
 Organizes files into Infuse/Plex-compatible structure:
+
 - Movies: `影视资源/Movie Name (Year)/Movie Name (Year).ext`
 - TV: `影视资源/Show Name/Season XX/Show Name - SXXEXX.ext`
 
@@ -95,16 +97,29 @@ Organizes files into Infuse/Plex-compatible structure:
 
 1. User says "I want to watch X"
 2. Run search only: `.venv/bin/python scripts/cinema.py search X` through the real terminal tool with `workdir=/root/.hermes/skills/films-finder` and `timeout=60`
-3. Search output is a numbered table (`序号`, `内容`, `大小`, `得分`) and caches the full latest result list
+3. Search output is a numbered table (`序号`, `内容`, `大小`, and `得分`) and caches the full latest result list
 4. If the user picks a result number, run `.venv/bin/python scripts/cinema.py save --index N` through the real terminal tool; do not pass `N` as a share URL
 5. Do not run `save` or `auto` in the same turn as a plain "I want to watch X" request unless the user explicitly asked for auto-save/best-pick
+
+### Save Response Format (user preference — enforced)
+
+After a successful save (status 200, message "ok"), **do NOT dump the raw JSON** result under any circumstances. The saved JSON is tool output — it is never the final reply.
+
+Reply with a short, natural Chinese line. Extract the movie title and quality information from the selected result's title. Keep it to one or two lines with no JSON, status codes, technical details, or log-style prefixes.
+
+Good examples:
+
+- ✅ 搞定！《007：无暇赴死》4K 杜比视界 REMUX 已存到夸克 🎉
+- ✅ 搞定！《007：幽灵党》4K 原盘 REMUX 中文字幕已存到夸克 🎉
+- 加上刚才的影片，可以连看了 🍿
+
 6. If `save --index N` fails, report that result's error and ask the user to choose another index; do not try other indexes autonomously. `--force` is not supported; never retry with `save --index N --force`.
 7. If save fails with Quark auth required, send the QR `MEDIA:` line and wait for the user's scan confirmation; do not call `login --confirm` before the user says they scanned it. If the user asks for “失效自动给我发二维码重登”, this is permission to immediately send the QR whenever `auth_required` appears, but still wait for “已扫码” before confirming.
 8. When the user replies “已扫码”, run the real `login --confirm --timeout 60` tool call immediately with `timeout=90`. Do not print pseudo tool-call text. If confirmation succeeds and there is a pending save, the command may retry it automatically; report that retry result. If it only saves the cookie but no retry happens, retry the exact user-selected index/share once.
 9. If a selected save fails with Quark auth, name conflict, or any other error, do **not** try other result indexes unless the user explicitly chooses them. Preserve the user’s chosen index through login/confirm/retry. Suggest alternatives in text only.
 10. A successful Quark QR confirmation only proves a cookie was saved; the subsequent save endpoint can still return `auth_required`. Treat the actual `save --index N` result as authoritative. If it returns a new QR, send that latest `MEDIA:` line and continue the login loop rather than claiming the movie was saved.
-11. Use `cinema.py auto` only when the user explicitly requests automatic best-pick + save + organize, or `cinema.py organize` on a saved fid when manual organization is needed
-12. Infuse/Plex auto-detects and fetches metadata
+11. Use `cinema.py auto` only when the user explicitly requests automatic best-pick + save + organize, or `cinema.py organize` on a saved fid when manual organization is needed.
+12. Infuse/Plex auto-detects and fetches metadata.
 
 ## Query Notes
 
@@ -114,25 +129,45 @@ Organizes files into Infuse/Plex-compatible structure:
 
 ## Pitfalls
 
+### "Invalid share URL" — source plugin share links have expired site-wide
+
+When `save --index N` returns `"Invalid share URL"`, it means the source plugin could not resolve the result, not that the user's Quark cookie is invalid.
+
+1. Test the source's search and transfer endpoints directly.
+2. If the direct transfer API returns a valid `share_url`, retry later or inspect plugin timeouts and headers.
+3. If the direct API also fails, report that the source is temporarily unavailable and suggest another source.
+
+Do not run the QR login flow for `Invalid share URL`. Only re-authenticate when `save` explicitly returns `auth_required`.
+
+See `references/resource-site-compatibility.md` for verified 365 source API details and compatibility checks.
+
 ### QR login timing — confirm may timeout if QR was generated too early
 
-When the user scans a QR image and replies "已扫码", time has already elapsed between QR generation and the `login --confirm` call. The `--timeout 60` counts from when the command starts, but the QR only has a limited remaining lifetime (300 seconds from generation). If the user takes 30+ seconds to open the Quark App and scan, the QR may be nearly expired when `--confirm` starts polling, and the 60-second confirm window may not be enough.
+When the user scans a QR image and replies "已扫码", time has already elapsed between QR generation and the `login --confirm` call. The `--timeout 60` counts from when the command starts, but the QR only has a limited remaining lifetime. If the user takes too long to open the Quark App and scan, the QR may be nearly expired when `--confirm` starts polling.
 
-**Mitigation**: If `login --confirm` returns `RuntimeError: QR login timed out or failed` after a successful scan, generate a fresh QR immediately with `cinema.py login --qr` and ask the user to scan again, then call `login --confirm` with a larger timeout (e.g., `--timeout 120`). Alternatively, instruct the user to reply "已扫码" immediately after scanning to minimize delay.
+If `login --confirm` returns `RuntimeError: QR login timed out or failed` after a successful scan, generate a fresh QR immediately and ask the user to scan again, then call `login --confirm` with a larger timeout.
 
-### 同名冲突 (code 23008) — popular movies may have all 4K results pointing to the same files
+### 同名冲突 (code 23008)
 
-When saving a popular movie like 007 or 哪吒, it's common for the top-ranked 4K REMUX results (indices 1, 2, 6, etc.) to all fail with `code: 23008, message: 'file is doloading[同名冲突]'`. This means the file already exists in your Quark drive — the different share URLs all point to the same file names.
+Popular releases may have several search results that point to the same underlying files. A same-name conflict can mean the file already exists in the user's Quark drive.
 
-**Mitigation**: 
-- Report the selected result's conflict and ask the user what to do next; do not keep trying indices 1, 2, 6 in sequence unless the user explicitly picks each one.
-- Suggest the user try a lower-ranked result (e.g., a 1080p version or a source with different file naming) that hasn't been saved yet.
-- If ALL user-selected results have 同名冲突, the movie may already be in the Quark library. Ask the user whether they'd like to reorganize an existing save, or pick a different quality source.
+- Report the selected result's conflict and ask the user what to do next.
+- Do not keep trying other indices unless the user explicitly picks them.
+- Suggest a lower-ranked version or a source with different file naming.
 
-### Cookie stored in two places — ensure both are in sync
+### Cloudflare "Just a moment..." — site blocks direct HTTP requests
+
+Some source sites use a JavaScript challenge. If a browser User-Agent still returns a Cloudflare "Just a moment..." page, a normal `urllib` or `requests` plugin will not work. Skip the source or use maintained browser automation.
+
+### Streaming-only sources are incompatible
+
+`films-finder` needs a Quark share URL from `extract_link()`. HLS (`.m3u8`), direct CDN video URLs, and other streaming-only sources cannot be transferred to Quark Drive.
+
+### Cookie stored in two places
 
 The `login --confirm` command writes the cookie to both:
+
 - `~/.films-finder/quark_cookies.json` (via `quark.py`'s `_save_cookie_cache`)
 - `config.json` (via `cinema.py`'s `save_quark_cookie`)
 
-Both files must contain the full, untruncated cookie string for saves to work. If `config.json` ends up with a shorter or malformed cookie while `~/.films-finder/quark_cookies.json` has the full one, the `save` command may still use the broken cookie from config.json. Verify the cookie lengths match after login.
+Both files must contain the full, untruncated cookie string for saves to work. If `config.json` ends up with a malformed cookie while the cache has the full one, the save command may still use the broken cookie from `config.json`.

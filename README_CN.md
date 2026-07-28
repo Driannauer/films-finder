@@ -1,150 +1,244 @@
 # films-finder
 
-`films-finder` 是一个用于个人媒体库管理的 [Hermes Agent](https://github.com/nousresearch/hermes-agent) 技能，也可以作为普通 Python 命令行工具使用。它支持内容发现、夸克网盘保存和自动分类整理。
+[English](README.md)
 
-## 功能特性
+`films-finder` 是一个 [Hermes Agent](https://github.com/nousresearch/hermes-agent) 技能和 Python 命令行工具：搜索影视内容源、按质量排序、把选中的资源转存到夸克网盘，并整理成适合 Infuse、Plex 或 Jellyfin 使用的个人媒体库。
 
-- 🔍 **多源搜索** — 插件系统，可添加任意内容源
-- 📊 **质量评分** — 按分辨率、片源、HDR、音频、编码、字幕自动排序
-- ☁️ **夸克网盘保存** — 一键保存到夸克网盘
-- 🎭 **自动分类** — OMDB API 或内容源抓取，本地缓存
-- 📁 **媒体库管理** — 自动整理为 Infuse/Plex/Jellyfin 兼容格式
+## 功能
 
-## 快速开始
+- 同时搜索所有已启用的内容源插件并合并结果。
+- 按分辨率、片源、HDR、音频、编码、字幕和网盘类型自动评分。
+- 先展示带序号的结果表，再按用户选择转存，不会默认盲选。
+- 支持终端扫码，以及适合 Hermes 聊天发送的图片二维码登录。
+- Cookie 失效时记录当前转存任务，重新登录后自动重试原任务。
+- 转存时过滤推广图片，并尽量复用已有目录和同名文件。
+- 支持转存成功后自动下载到本地，也可按文件 ID 手动下载。
+- 将电影和剧集整理成媒体服务器容易识别的目录结构。
+
+## 环境要求
+
+- Python 3.10 或更高版本
+- 夸克网盘账号和夸克 App
+- 如需对话式使用，需要 Hermes Agent
+- 可选的 [OMDb API Key](https://www.omdbapi.com/apikey.aspx)，用于影片类型分类
+
+## 安装
 
 ```bash
 git clone https://github.com/Driannauer/films-finder.git ~/.hermes/skills/films-finder
-pip install -r ~/.hermes/skills/films-finder/requirements.txt
-python3 ~/.hermes/skills/films-finder/scripts/setup.py
+cd ~/.hermes/skills/films-finder
+
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cp config.example.json config.json
+.venv/bin/python scripts/setup.py
 ```
 
-设置向导会引导你完成：
-1. **夸克网盘登录** — 账号密码（推荐）或 Cookie
-2. **内容源选择** — 自动检测已安装插件，逐个启用/禁用
-3. **自动分类** — OMDB API（推荐）/ 内容源抓取 / 关闭
-4. **保存目录** — 夸克网盘中的文件夹名
+`config.json` 会保存本地凭据，已被 Git 忽略。
 
-## 使用方法
+## 快速开始
 
-### 通过 Hermes Agent
-
-直接告诉你的助手：
-- "我要看星际穿越"
-- "搜一下流浪地球2"
-- "帮我整理一下夸克网盘里的影视资源"
-
-### 命令行
+先在交互式终端扫码登录：
 
 ```bash
-python3 scripts/cinema.py search 流浪地球          # 搜索
-python3 scripts/cinema.py auto 星际穿越             # 搜索 + 保存 + 整理
-python3 scripts/cinema.py login --qr              # 生成可由 Hermes 发送的夸克登录二维码
-python3 scripts/cinema.py login --confirm         # 确认扫码并保存新 Cookie
-python3 scripts/cinema.py save https://pan.quark.cn/s/xxx  # 保存链接
-python3 scripts/cinema.py save --index 1           # 保存最近一次搜索结果中的第 1 条
-python3 scripts/cinema.py save --index 1 流浪地球   # 重新搜索并保存第 1 条
-python3 scripts/cinema.py organize <fid> 电影名 --type movie  # 整理
-python3 scripts/cinema.py plugins                    # 查看插件
-python3 scripts/setup.py                             # 重新运行设置向导
+.venv/bin/python scripts/cinema.py login
 ```
 
-## 配置说明
+然后搜索、查看排序结果并转存指定条目：
 
-编辑 `config.json`（由设置向导创建）：
+```bash
+.venv/bin/python scripts/cinema.py search '流浪地球2'
+.venv/bin/python scripts/cinema.py save --index 1
+```
+
+最近一次搜索结果会缓存在 `~/.films-finder/last_search.json`。如果缓存可能已经过时，可以在转存时重新搜索：
+
+```bash
+.venv/bin/python scripts/cinema.py save --index 1 '流浪地球2'
+```
+
+也可以直接转存夸克分享链接：
+
+```bash
+.venv/bin/python scripts/cinema.py save 'https://pan.quark.cn/s/your-share-id'
+```
+
+## 在 Hermes 中使用
+
+把仓库安装到 `~/.hermes/skills/films-finder` 后，可以直接对助手说：
+
+- “搜索星际穿越。”
+- “保存第 2 个。”
+- “自动帮我选流浪地球 2 的最佳版本。”
+- “把这个夸克文件整理成第一季第三集。”
+
+聊天场景使用两步扫码流程：
+
+```bash
+# 生成可由 Hermes 作为媒体附件发送的 PNG 二维码
+.venv/bin/python scripts/cinema.py login --qr
+
+# 用户用夸克 App 扫码后执行
+.venv/bin/python scripts/cinema.py login --confirm --timeout 60
+```
+
+如果转存时发现 Cookie 已失效，`films-finder` 会生成新二维码并记录原转存任务。`login --confirm` 保存新 Cookie 后，会自动重试这一个任务。
+
+## 命令速查
+
+| 命令 | 用途 |
+|---|---|
+| `cinema.py search <关键词>` | 搜索已启用插件、排序并缓存最新结果 |
+| `cinema.py save --index N [关键词]` | 转存缓存中的第 `N` 条；传入关键词时会重新搜索 |
+| `cinema.py save <分享链接>` | 直接转存夸克分享链接 |
+| `cinema.py auto <关键词>` | 自动选择得分最高的夸克结果，转存并按电影整理 |
+| `cinema.py login` | 在终端显示二维码并保存登录 Cookie |
+| `cinema.py login --qr` | 生成供 Hermes 发送的二维码图片 |
+| `cinema.py login --confirm` | 确认最近一次扫码，并重试待处理转存 |
+| `cinema.py download <fid> [...]` | 按夸克文件或文件夹 ID 下载到本地 |
+| `cinema.py organize <fid> <标题>` | 将已有夸克文件整理成电影或剧集 |
+| `cinema.py plugins` | 查看已启用的内容源插件 |
+
+常用选项：
+
+```bash
+# 只预览解析到的结果和分享链接，不执行转存
+.venv/bin/python scripts/cinema.py save --index 1 --dry-run
+
+# 本次转存使用其他目标目录
+.venv/bin/python scripts/cinema.py save --index 1 --folder '我的媒体库'
+
+# 递归下载一个文件或文件夹
+.venv/bin/python scripts/cinema.py download <fid> --dir /srv/media
+
+# 按剧集整理
+.venv/bin/python scripts/cinema.py organize <fid> '剧名' \
+  --type tv --season 1 --episode 3
+```
+
+## 配置
+
+可以重新运行 `scripts/setup.py`，也可以直接编辑 `config.json`：
 
 ```json
 {
   "quark": {
-    "cookie": "从浏览器获取的cookie"
+    "cookie": "",
+    "login_timeout": 300
   },
   "plugins": {
-    "wp365": { "enabled": true }
+    "wp365": {
+      "enabled": true,
+      "request_timeout": 8,
+      "retries": 2
+    },
+    "example": {
+      "enabled": false
+    }
   },
   "save_folder": "夸克影视",
+  "download_after_save": false,
+  "local_download_folder": "/root/films",
+  "plugin_search_timeout": 20,
   "omdb_api_key": ""
 }
 ```
 
-### 夸克认证
+| 配置项 | 说明 |
+|---|---|
+| `quark.cookie` | 夸克会话 Cookie；扫码登录后自动写入 |
+| `quark.login_timeout` | 登录二维码有效时长，单位为秒 |
+| `plugins.<name>.enabled` | 启用或停用指定内容源 |
+| `plugins.wp365.request_timeout` | 365 内容源单次请求超时 |
+| `plugins.wp365.retries` | 365 内容源请求最大尝试次数 |
+| `save_folder` | 夸克网盘中的目标目录 |
+| `download_after_save` | 转存成功后是否自动下载到本地 |
+| `local_download_folder` | 自动或手动下载的本地目标目录 |
+| `plugin_search_timeout` | 插件搜索或链接解析的进程级超时 |
+| `omdb_api_key` | 可选，用于查询影片类型 |
 
-Hermes 聊天登录：运行 `python3 scripts/cinema.py login --qr`，命令会在 `~/.hermes/cache/films-finder/quark-login/` 下生成二维码图片，并输出可由 Hermes 发送的 `MEDIA:/...png`。用夸克 App 扫码后，运行 `python3 scripts/cinema.py login --confirm` 保存新 Cookie。
+扫码状态保存在 `~/.hermes/cache/films-finder/quark-login/`。运行时 Cookie、二维码状态、虚拟环境和 `config.json` 都不会进入版本控制。
 
-当 `save` 检测到夸克 Cookie 缺失或过期时，会自动生成新的二维码，并记录刚才待保存的资源。扫码后执行 `login --confirm` 会保存 Cookie 并自动重试刚才的保存。
+## 媒体库结构
 
-手动备用方式：登录 [pan.quark.cn](https://pan.quark.cn)，打开浏览器开发者工具（F12）→ Network 标签 → 随便点一个请求 → 复制 `Cookie` 请求头的值，粘贴到 `config.json` 的 `quark.cookie` 字段。
+电影按类型和片名整理：
 
-### 自动分类
-
-| 模式 | 配置 | 准确度 | 费用 |
-|------|------|--------|------|
-| OMDB API | `"omdb_api_key": "你的key"` | 高 | 免费，1000次/天 |
-| 内容源抓取 | `"omdb_api_key": ""` | 中 | 免费 |
-| 关闭 | （电影存入扁平结构） | 无 | 免费 |
-
-在 [omdbapi.com/apikey.aspx](http://www.omdbapi.com/apikey.aspx) 免费获取 OMDB API Key，只需输入邮箱。
-
-分类结果缓存在 `scripts/genre_cache.json`。
-
-## 添加内容源
-
-将 `.py` 插件文件放入 `scripts/plugins/` 目录：
-
-```bash
-cp scripts/plugins/example.py scripts/plugins/your_site.py
+```text
+夸克影视/
+└── 科幻/
+    └── 流浪地球2 (2023)/
+        └── The.Wandering.Earth.II.2023.2160p.WEB-DL.mkv
 ```
 
-实现两个方法：
+剧集使用季度目录：
+
+```text
+夸克影视/
+└── 剧情/
+    └── 剧名/
+        └── Season 01/
+            └── 剧名 - S01E03.mkv
+```
+
+符合 Scene 规范的文件名会被保留，杂乱文件名会被标准化。类型信息优先来自 OMDb，其次使用兼容插件提供的页面信息；无法识别时归入 `其他`。
+
+## 质量评分
+
+评分只用于排序，不保证内容源中的链接始终可用。
+
+| 信号 | 示例 |
+|---|---|
+| 分辨率 | 2160p/4K 高于 1080p、720p 和 480p |
+| 片源 | BluRay/REMUX 高于 WEB-DL、WEBRip、HDTV 和 CAM |
+| HDR | Dolby Vision、HDR10+、HDR10、HDR |
+| 音频 | Atmos、TrueHD、DTS-HD、DTS、EAC3/DDP、AAC |
+| 编码 | H.265/HEVC/x265 高于 H.264/x264 |
+| 加分项 | 含字幕和夸克来源会额外加分 |
+
+## 添加内容源插件
+
+复制模板，然后实现 `search()` 和 `extract_link()`：
+
+```bash
+cp scripts/plugins/example.py scripts/plugins/my_source.py
+```
 
 ```python
 from plugins import ResourcePlugin, ResourceResult
 
+
 class Plugin(ResourcePlugin):
-    name = "your_site"
-    display_name = "你的站点名"
+    name = "my_source"
+    display_name = "我的内容源"
     requires_auth = False
-    url = "https://your-site.com"
+    url = "https://example.com"
 
     def search(self, query: str, page: int = 1) -> list[ResourceResult]:
         ...
+
     def extract_link(self, resource: ResourceResult) -> str | None:
         ...
 ```
 
-然后在 `config.json` 中启用，或重新运行 `setup.py`。详见 `scripts/plugins/example.py` 完整模板。
+在 `config.json` 中启用：
 
-## 媒体库结构
-
-```
-夸克影视/
-├── 动作/
-│   └── 金谍行动 (2026)/
-│       └── In.the.Grey.2026.2160p.WEB-DL.mkv
-├── 剧情/
-│   └── 大濛 (2025)/
-│       └── A.Foggy.Tale.2025.1080p.NF.WEB-DL.mkv
-├── 科幻/
-│   └── 流浪地球2 (2023)/
-│       └── 流浪地球2 (2023).mkv
-└── 其他/
-    └── 未识别类型的电影 (2024)/
+```json
+{
+  "plugins": {
+    "my_source": {
+      "enabled": true
+    }
+  }
+}
 ```
 
-Infuse/Plex 兼容命名：
-- 电影：`电影名 (年份).扩展名`
-- 电视剧：`剧名/Season XX/剧名 - SXXEXX.扩展名`
+兼容插件最终必须能返回夸克分享链接。`.m3u8` 等纯在线播放地址不能转存到夸克网盘。
 
-## 质量评分
+## 常见问题
 
-| 因素 | 最佳 | 最差 |
-|------|------|------|
-| 分辨率 | 2160p/4K (+100) | 480p (+5) |
-| 片源 | BluRay/REMUX (+90) | CAM (+5) |
-| HDR | Dolby Vision (+30) | 无 (0) |
-| 音频 | Atmos/TrueHD (+15) | AAC (+2) |
-| 编码 | H.265/HEVC (+10) | H.264 (+5) |
-| 字幕 | 包含 (+5) | 无 (0) |
-| 平台 | 夸克 (+15) | 百度 (0) |
+- **出现 `auth_required`**：扫描新生成的二维码，然后运行 `login --confirm`。扫码成功只代表 Cookie 已保存，仍需检查待处理转存的重试结果。
+- **出现 `Invalid share URL`**：内容源没能把搜索结果解析成有效夸克链接，可以稍后重搜或选择其他结果。
+- **同名冲突 / 错误码 `23008`**：目标位置已有同名内容，或同名转存任务仍在进行。
+- **插件超时**：调大 `plugin_search_timeout`，或调整对应插件的请求超时与重试次数。
 
-## 许可证
-
-MIT
+请只保存你有权访问和存储的内容。

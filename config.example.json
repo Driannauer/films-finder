@@ -5,12 +5,11 @@
   },
   "plugins": {
     "wp365": { "enabled": true, "request_timeout": 8, "retries": 2 },
-    "mini4k": { "enabled": false, "username": "", "password": "" }
+    "example": { "enabled": false }
   },
   "save_folder": "夸克影视",
   "download_after_save": false,
   "local_download_folder": "/root/films",
-  "skip_ad_images": true,
   "plugin_search_timeout": 20,
   "omdb_api_key": ""
 }

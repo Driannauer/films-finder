@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Interactive setup wizard for Cinema Manager."""
+"""Interactive setup wizard for films-finder."""
 
 import json
 import os
@@ -76,7 +76,7 @@ def ask(prompt: str, default: str = "") -> str:
 
 def main():
     print("=" * 50)
-    print("🎬 Cinema Manager 设置向导")
+    print("🎬 films-finder 设置向导")
     print("=" * 50)
 
     config = load_config()
@@ -91,8 +91,8 @@ def main():
     cookie = ask("Cookie（已扫码登录可直接回车）", config["quark"].get("cookie", ""))
     config["quark"]["cookie"] = cookie
 
-    # ── Step 2: Resource Sites ──
-    print(f"\n🔍 第二步：资源站配置（发现 {len(available_plugins)} 个插件）\n")
+    # ── Step 2: Content Sources ──
+    print(f"\n🔍 第二步：内容源配置（发现 {len(available_plugins)} 个插件）\n")
 
     if not available_plugins:
         print("  未发现插件，请将插件 .py 文件放入 scripts/plugins/ 目录")
@@ -124,11 +124,11 @@ def main():
     print("  影片会自动归入 动作/剧情/科幻 等文件夹")
     print()
     print("  方式一：OMDB API（免费，1000次/天，准确率高）")
-    print("  方式二：从资源站页面抓取（免费，准确率取决于资源站）")
-    print("  方式三：不分类，所有影片平铺在保存目录下")
+    print("  方式二：从兼容内容源页面抓取（免费，准确率取决于内容源）")
+    print("  方式三：不配置外部类型来源（无法识别时归入“其他”）")
     print()
 
-    genre_choice = ask("选择 (1=OMDB, 2=资源站抓取, 3=不分类)", "1")
+    genre_choice = ask("选择 (1=OMDB, 2=内容源抓取, 3=归入其他)", "1")
 
     if genre_choice == "1":
         print("\n  获取OMDB Key：")
@@ -140,10 +140,10 @@ def main():
         config["omdb_api_key"] = omdb_key
     elif genre_choice == "2":
         config["omdb_api_key"] = ""
-        print("  → 将从资源站页面抓取类型信息")
+        print("  → 将从兼容内容源页面抓取类型信息")
     else:
         config["omdb_api_key"] = ""
-        print("  → 不自动分类")
+        print("  → 无法识别类型时归入“其他”")
 
     # ── Step 4: Save Folder ──
     print("\n📂 第四步：保存目录\n")
@@ -172,7 +172,7 @@ def main():
         print("  ⚠️  夸克未配置！")
 
     enabled = [k for k, v in config.get("plugins", {}).items() if v.get("enabled")]
-    print(f"  资源站：{', '.join(enabled) if enabled else '无'}")
+    print(f"  内容源：{', '.join(enabled) if enabled else '无'}")
     print(f"  保存目录：{config['save_folder']}")
     if config.get("download_after_save", False):
         print(f"  本地同步：{config.get('local_download_folder', '/root/films')}")
@@ -182,9 +182,9 @@ def main():
     if config.get("omdb_api_key"):
         print(f"  类型分类：OMDB API ✅")
     elif genre_choice == "2":
-        print(f"  类型分类：资源站抓取")
+        print(f"  类型分类：内容源抓取")
     else:
-        print(f"  类型分类：关闭")
+        print(f"  类型分类：无法识别时归入“其他”")
 
     print("\n🎬 完成！对你的 Hermes Agent 说「我要看电影」试试吧！\n")
 

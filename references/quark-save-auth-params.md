@@ -1,6 +1,6 @@
 # Quark save auth false-positive: required query params
 
-Observed during a QQ cinema-manager session saving `007：无暇赴死` after a fresh QR login.
+Observed during a QQ films-finder session saving `007：无暇赴死` after a fresh QR login.
 
 ## Symptom
 

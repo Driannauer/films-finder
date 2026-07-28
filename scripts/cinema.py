@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cinema Manager - Search resource sites and save to Quark cloud drive.
+films-finder - Search content sources and save to Quark cloud drive.
 
 Usage:
     cinema.py login                    Terminal QR login and save Quark cookie

@@ -647,6 +647,7 @@ class QuarkClient:
                     "exclude_fids": [],
                     "scene": "link",
                 },
+                params={"pr": "ucpro", "fr": "pc", "uc_param_str": ""},
                 base_url=QUARK_SHARE_API,
             )
         except Exception as e:

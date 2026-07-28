@@ -1,104 +1,125 @@
 # films-finder
 
-`films-finder` 是一个面向个人媒体库的影视资源查找与整理工具，也可以作为 [Hermes Agent](https://github.com/nousresearch/hermes-agent) skill 使用。它通过插件搜索影视资源，按资源质量自动评分，并支持将夸克网盘资源转存到指定目录，再整理成适合 Infuse、Plex、Jellyfin 等媒体播放器识别的目录结构。
+[中文文档](README_CN.md)
 
-本项目适合用于个人影视库管理、资源检索和自动化整理。请在使用时遵守所在地法律法规以及相关平台的服务条款。
+`films-finder` is a [Hermes Agent](https://github.com/nousresearch/hermes-agent) skill and Python CLI for searching media sources, saving selected files to Quark Drive, and organizing a personal library for Infuse, Plex, or Jellyfin.
 
-## 主要功能
+## What it does
 
-- 多来源搜索：通过 `scripts/plugins/` 下的插件接入不同资源站。
-- 质量评分：按分辨率、片源、HDR、音频、编码、字幕、网盘类型等维度自动排序。
-- 夸克网盘转存：支持直接转存夸克分享链接，也支持从搜索结果中选择指定条目转存。
-- 扫码登录：支持终端登录，也支持生成可由 Hermes 发送的二维码图片。
-- 媒体库整理：可将已保存的文件整理为电影或剧集目录结构。
-- 类型分类：支持通过 OMDB API 或资源页信息识别影片类型，并缓存识别结果。
-- 本地同步：可在转存成功后把夸克文件同步下载到本地目录。
+- Searches every enabled source plugin and merges the results.
+- Scores releases by resolution, source, HDR, audio, codec, subtitles, and drive type.
+- Lets you review a numbered result table before saving a specific item.
+- Supports terminal QR login and image-based QR login for Hermes chat.
+- Remembers a pending save when Quark authentication expires and retries it after login.
+- Filters promotional images while preserving the shared folder structure.
+- Reuses existing folders and files where possible instead of failing on every name conflict.
+- Optionally downloads newly saved files to local storage.
+- Organizes movies and TV shows into media-server-friendly folders.
 
-## 项目结构
+## Requirements
 
-```text
-films-finder/
-├── scripts/
-│   ├── cinema.py          # 命令行入口
-│   ├── setup.py           # 交互式配置向导
-│   ├── quark.py           # 夸克网盘相关操作
-│   ├── library.py         # 媒体库整理逻辑
-│   └── plugins/           # 内容源插件
-├── config.example.json    # 配置示例
-├── requirements.txt       # Python 依赖
-├── SKILL.md               # Hermes skill 描述
-└── README.md
-```
+- Python 3.10 or newer
+- A Quark Drive account and the Quark mobile app
+- Hermes Agent if you want to use the skill conversationally
+- An optional [OMDb API key](https://www.omdbapi.com/apikey.aspx) for genre classification
 
-## 环境要求
-
-- Python 3.10 或更高版本。
-- 可访问目标内容源和夸克网盘。
-- 如需作为 Hermes skill 使用，请先安装并配置 Hermes Agent。
-- 如需使用 OMDB 类型分类，请准备一个 OMDB API Key。
-
-## 快速开始
-
-作为普通 Python 工具使用：
+## Installation
 
 ```bash
-git clone https://github.com/<your-github-username>/films-finder.git
-cd films-finder
-pip install -r requirements.txt
-python scripts/setup.py
+git clone https://github.com/Driannauer/films-finder.git ~/.hermes/skills/films-finder
+cd ~/.hermes/skills/films-finder
+
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cp config.example.json config.json
+.venv/bin/python scripts/setup.py
 ```
 
-作为 Hermes skill 使用：
+`config.json` contains local credentials and is ignored by Git.
+
+## Quick start
+
+Log in from an interactive terminal:
 
 ```bash
-git clone https://github.com/<your-github-username>/films-finder.git ~/.hermes/skills/films-finder
-pip install -r ~/.hermes/skills/films-finder/requirements.txt
-python ~/.hermes/skills/films-finder/scripts/setup.py
+.venv/bin/python scripts/cinema.py login
 ```
 
-配置向导会引导你完成：
-
-1. 夸克网盘登录或 Cookie 配置。
-2. 内容源插件启用或禁用。
-3. OMDB API 或资源页抓取的类型分类设置。
-4. 夸克网盘保存目录设置。
-5. 转存后是否同步下载到本地。
-
-## 常用命令
+Then search, review the ranked results, and save the item you want:
 
 ```bash
-python scripts/cinema.py plugins
-python scripts/cinema.py search "流浪地球"
-python scripts/cinema.py auto "星际穿越"
-python scripts/cinema.py save https://pan.quark.cn/s/xxxx
-python scripts/cinema.py save --index 1
-python scripts/cinema.py save --index 1 "流浪地球"
-python scripts/cinema.py save --index 1 "流浪地球" --dry-run
-python scripts/cinema.py login
-python scripts/cinema.py login --qr
-python scripts/cinema.py login --confirm
-python scripts/cinema.py download <fid> --dir /root/films
-python scripts/cinema.py organize <fid> "电影名称" --type movie
-python scripts/cinema.py organize <fid> "剧集名称" --type tv --season 1 --episode 1
-python scripts/setup.py
+.venv/bin/python scripts/cinema.py search 'Interstellar'
+.venv/bin/python scripts/cinema.py save --index 1
 ```
 
-命令说明：
+The latest search is cached under `~/.films-finder/last_search.json`. If the cache may be stale, search again while saving:
 
-- `plugins`：查看当前可用插件。
-- `search <query>`：搜索影视资源，并以 Markdown 表格输出前 20 条结果。
-- `auto <query>`：搜索并自动选择评分最高的夸克资源进行转存和整理。
-- `save <url>`：直接转存夸克分享链接。
-- `save --index N`：转存最近一次搜索结果中的第 N 条。
-- `save --index N <query>`：重新搜索后转存第 N 条结果。
-- `save --dry-run`：只解析并展示将要保存的资源，不执行转存。
-- `download <fid>`：把指定夸克文件或文件夹 ID 下载到本地。
-- `organize`：将已保存的文件整理为电影或剧集目录。
-- `login`、`login --qr`、`login --confirm`：完成夸克登录和 Cookie 保存。
+```bash
+.venv/bin/python scripts/cinema.py save --index 1 'Interstellar'
+```
 
-## 配置说明
+You can also pass a Quark share link directly:
 
-首次运行 `python scripts/setup.py` 后会生成 `config.json`。也可以参考 `config.example.json` 手动配置：
+```bash
+.venv/bin/python scripts/cinema.py save 'https://pan.quark.cn/s/your-share-id'
+```
+
+## Using it through Hermes
+
+Install the repository under `~/.hermes/skills/films-finder`, then speak naturally:
+
+- “Search for Interstellar.”
+- “Save result 2.”
+- “Automatically pick the best version of The Wandering Earth 2.”
+- “Organize this Quark file as a TV episode.”
+
+For chat-based login, the skill uses a two-step flow:
+
+```bash
+# Create a PNG that Hermes can send as a media attachment
+.venv/bin/python scripts/cinema.py login --qr
+
+# Run after the user has scanned it with the Quark app
+.venv/bin/python scripts/cinema.py login --confirm --timeout 60
+```
+
+If a save detects an expired cookie, `films-finder` creates a fresh QR code and records that exact save as pending. `login --confirm` stores the new cookie and retries the pending save automatically.
+
+## Command reference
+
+| Command | Purpose |
+|---|---|
+| `cinema.py search <query>` | Search enabled plugins, rank results, and cache the latest list |
+| `cinema.py save --index N [query]` | Save result `N` from the cache, or search again when `query` is supplied |
+| `cinema.py save <share_url>` | Save a direct Quark share link |
+| `cinema.py auto <query>` | Pick the highest-ranked Quark result, save it, and organize it as a movie |
+| `cinema.py login` | Display a QR code in the terminal and save the returned cookie |
+| `cinema.py login --qr` | Create a QR image for Hermes delivery |
+| `cinema.py login --confirm` | Confirm the latest QR login and retry any pending save |
+| `cinema.py download <fid> [...]` | Download one or more Quark file or folder IDs |
+| `cinema.py organize <fid> <title>` | Organize an existing Quark item as a movie or TV episode |
+| `cinema.py plugins` | List enabled source plugins |
+
+Useful options:
+
+```bash
+# Preview the resolved result and share URL without saving
+.venv/bin/python scripts/cinema.py save --index 1 --dry-run
+
+# Override the target folder for one save
+.venv/bin/python scripts/cinema.py save --index 1 --folder 'My Library'
+
+# Download a file or folder recursively
+.venv/bin/python scripts/cinema.py download <fid> --dir /srv/media
+
+# Organize TV content
+.venv/bin/python scripts/cinema.py organize <fid> 'Show Name' \
+  --type tv --season 1 --episode 3
+```
+
+## Configuration
+
+Run `scripts/setup.py` or edit `config.json`:
 
 ```json
 {
@@ -111,129 +132,87 @@ python scripts/setup.py
       "enabled": true,
       "request_timeout": 8,
       "retries": 2
+    },
+    "example": {
+      "enabled": false
     }
   },
   "save_folder": "夸克影视",
   "download_after_save": false,
   "local_download_folder": "/root/films",
-  "skip_ad_images": true,
   "plugin_search_timeout": 20,
   "omdb_api_key": ""
 }
 ```
 
-字段说明：
+| Setting | Description |
+|---|---|
+| `quark.cookie` | Quark session cookie; QR login fills this automatically |
+| `quark.login_timeout` | Lifetime of a generated login QR code, in seconds |
+| `plugins.<name>.enabled` | Enables or disables a source plugin |
+| `plugins.wp365.request_timeout` | Timeout for each 365 source request |
+| `plugins.wp365.retries` | Maximum number of 365 source request attempts |
+| `save_folder` | Destination folder in Quark Drive |
+| `download_after_save` | Downloads saved items locally after a successful transfer |
+| `local_download_folder` | Local destination for automatic or manual downloads |
+| `plugin_search_timeout` | Process-level timeout for plugin search or link extraction |
+| `omdb_api_key` | Optional key used to classify titles by genre |
 
-- `quark.cookie`：夸克网盘登录 Cookie。可通过扫码登录自动写入。
-- `quark.login_timeout`：扫码登录等待时间，单位为秒。
-- `plugins`：内容源插件配置。每个插件可单独启用、禁用或配置超时时间。
-- `save_folder`：资源转存到夸克网盘后的目标目录。
-- `download_after_save`：转存成功后是否自动同步下载到本地。
-- `local_download_folder`：本地下载目录。
-- `plugin_search_timeout`：单个插件搜索超时时间，单位为秒。
-- `omdb_api_key`：OMDB API Key。留空时会尝试使用资源页信息或跳过精准分类。
+The QR flow keeps local login state under `~/.hermes/cache/films-finder/quark-login/`. Runtime cookies, QR state, virtual environments, and `config.json` are excluded from version control.
 
-不要把包含真实 Cookie、账号、密码或私有 API Key 的 `config.json` 提交到公开仓库。
+## Library layout
 
-## 夸克登录
-
-终端登录：
-
-```bash
-python scripts/cinema.py login
-```
-
-Hermes 聊天场景可使用二维码登录：
-
-```bash
-python scripts/cinema.py login --qr
-```
-
-命令会生成二维码图片并输出 `MEDIA:/...png` 路径。用夸克 App 扫码后执行：
-
-```bash
-python scripts/cinema.py login --confirm
-```
-
-如果转存时检测到 Cookie 缺失或失效，程序会提示重新扫码，并在确认登录后重试之前挂起的转存任务。
-
-也可以手动获取 Cookie：登录 [pan.quark.cn](https://pan.quark.cn)，打开浏览器开发者工具，进入 Network 面板，复制请求头中的 `Cookie` 值并填入 `config.json` 的 `quark.cookie`。
-
-## 搜索与转存流程
-
-推荐流程：
-
-```bash
-python scripts/cinema.py search "影片名称"
-python scripts/cinema.py save --index 1
-```
-
-`search` 会缓存最近一次搜索结果，`save --index N` 会从缓存中选择第 N 条资源并提取真实夸克分享链接。如果想避免误转存，可以先执行：
-
-```bash
-python scripts/cinema.py save --index 1 --dry-run
-```
-
-确认无误后再去掉 `--dry-run`。
-
-## 媒体库整理
-
-电影目录示例：
+Movies are grouped by genre and title:
 
 ```text
 夸克影视/
-├── 动作/
-│   └── 疾速追杀 (2014)/
-│       └── John.Wick.2014.1080p.BluRay.x265.mkv
-├── 剧情/
-│   └── 奥本海默 (2023)/
-│       └── Oppenheimer.2023.2160p.WEB-DL.mkv
-└── 其他/
-    └── 未识别影片 (2024)/
+└── 科幻/
+    └── 流浪地球2 (2023)/
+        └── The.Wandering.Earth.II.2023.2160p.WEB-DL.mkv
 ```
 
-命名规则尽量兼容常见媒体播放器：
+TV episodes use season folders:
 
-- 电影：`Movie Name (Year).ext`
-- 剧集：`Show Name/Season 01/Show Name - S01E01.ext`
+```text
+夸克影视/
+└── 剧情/
+    └── Show Name/
+        └── Season 01/
+            └── Show Name - S01E03.mkv
+```
 
-当源文件已经是常见发布组命名格式时，程序会尽量保留原文件名，只整理外层目录。
+Scene-style filenames are preserved. Less structured filenames are normalized. Genre metadata comes from OMDb when configured, then from compatible plugin metadata when available, and otherwise falls back to `其他`.
 
-## 质量评分
+## Quality scoring
 
-搜索结果会根据标题和资源信息自动打分，分数越高越靠前。
+The score is a sorting aid, not a guarantee of availability.
 
-| 因素 | 高分示例 | 低分示例 |
-| --- | --- | --- |
-| 分辨率 | 2160p、4K、UHD | 480p |
-| 片源 | BluRay、REMUX、WEB-DL | CAM |
-| HDR | Dolby Vision、HDR10+、HDR | 无 HDR |
-| 音频 | Atmos、TrueHD、DTS-HD | AAC |
-| 编码 | H.265、HEVC、x265 | H.264 |
-| 字幕 | 包含中文字幕或双语字幕 | 无字幕信息 |
-| 平台 | 夸克网盘 | 其他网盘 |
+| Signal | Examples |
+|---|---|
+| Resolution | 2160p/4K ranks above 1080p, 720p, and 480p |
+| Source | BluRay/REMUX ranks above WEB-DL, WEBRip, HDTV, and CAM |
+| HDR | Dolby Vision, HDR10+, HDR10, HDR |
+| Audio | Atmos, TrueHD, DTS-HD, DTS, EAC3/DDP, AAC |
+| Codec | H.265/HEVC/x265 ranks above H.264/x264 |
+| Extras | Included subtitles and Quark sources receive bonuses |
 
-评分只用于排序参考，最终保存前建议结合文件大小、片源和标题自行确认。
+## Adding a source plugin
 
-## 添加内容源插件
-
-在 `scripts/plugins/` 下新增一个 Python 文件，例如：
+Copy the example and implement `search()` plus `extract_link()`:
 
 ```bash
-cp scripts/plugins/example.py scripts/plugins/your_site.py
+cp scripts/plugins/example.py scripts/plugins/my_source.py
 ```
-
-插件需要继承 `ResourcePlugin`，并实现 `search` 和 `extract_link`：
 
 ```python
 from plugins import ResourcePlugin, ResourceResult
 
 
 class Plugin(ResourcePlugin):
-    name = "your_site"
-    display_name = "Your Site Name"
+    name = "my_source"
+    display_name = "My Source"
     requires_auth = False
-    url = "https://your-site.example"
+    url = "https://example.com"
 
     def search(self, query: str, page: int = 1) -> list[ResourceResult]:
         ...
@@ -242,46 +221,25 @@ class Plugin(ResourcePlugin):
         ...
 ```
 
-然后在 `config.json` 中启用：
+Enable it in `config.json`:
 
 ```json
 {
   "plugins": {
-    "your_site": {
+    "my_source": {
       "enabled": true
     }
   }
 }
 ```
 
-也可以重新运行 `python scripts/setup.py`，让配置向导重新发现插件。
+A compatible plugin must ultimately return a Quark share URL. Streaming-only links such as HLS (`.m3u8`) cannot be transferred to Quark Drive.
 
-## 常见问题
+## Troubleshooting
 
-### 没有搜索结果
+- **`auth_required`**: scan the newly generated QR code, then run `login --confirm`. A successful login does not imply the pending save succeeded; check the retry result.
+- **`Invalid share URL`**: the source could not resolve its result into a working Quark link. Search again later or choose another result.
+- **Name conflict / code `23008`**: the target already contains the item or an active save task is using the same name.
+- **Plugin timeout**: increase `plugin_search_timeout`, or adjust that plugin's request timeout and retries.
 
-先运行 `python scripts/cinema.py plugins`，确认至少有一个插件已启用。再检查网络访问、插件配置和关键词是否正确。
-
-### 转存失败或提示需要登录
-
-夸克 Cookie 可能为空或已失效。运行 `python scripts/cinema.py login` 或二维码登录流程重新保存 Cookie。
-
-### `save --index` 找不到缓存
-
-需要先执行一次 `search`，或者直接使用：
-
-```bash
-python scripts/cinema.py save --index 1 "影片名称"
-```
-
-### 不想自动下载到本地
-
-将 `config.json` 中的 `download_after_save` 设置为 `false`。
-
-## 许可证
-
-MIT
-
-## 原仓库
-
-本项目基于原仓库 [DavidBB-L/cinema-manager](https://github.com/DavidBB-L/cinema-manager) 改写与整理。
+Only save content that you are authorized to access and store.
